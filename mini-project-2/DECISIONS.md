@@ -30,3 +30,13 @@ The Event document represents the full structure of an event stored in the datab
 On the other hand, the EventUpdate model is used for updating existing events. Its fields are optional, which allows us to update only specific parts of an event without sending all the data again.
 
 Keeping them separate makes the API more flexible and avoids unnecessary data requirements during update operations.
+
+## Part B
+
+1. I used `mongo` in `DATABASE_URL` because the FastAPI app and MongoDB run in separate Docker containers. Inside Docker Compose, containers talk to each other by service name. If I used `localhost`, the app container would try to connect to itself instead of the MongoDB container, so the connection would fail.
+
+2. `depends_on` makes Docker start the mongo service before the app service. During testing, I noticed that this only controls start order, not full readiness. MongoDB may still need a moment before accepting connections. A health check would be a more reliable way to wait until the database is fully ready.
+
+3. The volume in the mongo service keeps database files outside the container. I tested this by creating data, stopping the containers, and starting them again. The data was still there, which showed that persistence was working. Without the volume, the data would be lost when the container is removed.
+
+4. In the Dockerfile, `requirements.txt` is copied before the rest of the app so Docker can cache dependency installation. This makes rebuilds faster because if only the app code changes, Docker does not need to reinstall all packages again.

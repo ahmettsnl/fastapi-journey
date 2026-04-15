@@ -1,9 +1,9 @@
 from typing import Any, List, Optional
 
 from beanie import PydanticObjectId, init_beanie
-from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pymongo import AsyncMongoClient
 
 from models.events import Event
 from models.users import User
@@ -11,17 +11,20 @@ from models.users import User
 
 class Settings(BaseSettings):
     DATABASE_URL: Optional[str] = None
-
-    class Config:
-        env_file = ".env"
+    model_config = SettingsConfigDict(env_file=".env")
 
 
 async def initialize_database():
     settings = Settings()
-    client = AsyncIOMotorClient(settings.DATABASE_URL)
+
+    if not settings.DATABASE_URL:
+        raise ValueError("DATABASE_URL is not set in .env")
+
+    client = AsyncMongoClient(settings.DATABASE_URL)
+    db = client["planner"]
 
     await init_beanie(
-        database=client.get_default_database(),
+        database=db,
         document_models=[Event, User]
     )
 
@@ -48,7 +51,7 @@ class Database:
         if not doc:
             return False
 
-        update_data = body.dict()
+        update_data = body.model_dump()
         update_data = {key: value for key, value in update_data.items() if value is not None}
 
         await doc.update({"$set": update_data})
